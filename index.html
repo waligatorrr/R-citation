@@ -51,9 +51,16 @@ button{flex:1;border:0;border-radius:14px;padding:15px;font-size:16px;font-weigh
   <div class="card">
     <label for="surah">Sourate</label>
     <select id="surah"></select>
-    <div style="height:10px"></div>
-    <label for="ayah">Verset</label>
-    <select id="ayah"></select>
+<div style="height:10px"></div>
+<label for="mode">Mode de récitation</label>
+<select id="mode">
+  <option value="ayah">Un verset</option>
+  <option value="surah">Sourate entière</option>
+</select>
+
+<div id="ayahBlock" style="height:10px"></div>
+<label for="ayah">Verset</label>
+<select id="ayah"></select>
   </div>
 
   <div class="card">
@@ -128,6 +135,7 @@ const normalize = s => s
   .replace(/\s+/g," ").trim();
 
 const surahSel=document.getElementById("surah"), ayahSel=document.getElementById("ayah");
+const modeSel=document.getElementById("mode"), ayahBlock=document.getElementById("ayahBlock");
 const ayahAr=document.getElementById("ayahAr"), ayahFr=document.getElementById("ayahFr");
 const ref=document.getElementById("ref"), scoreEl=document.getElementById("score");
 const feedback=document.getElementById("feedback"), heardEl=document.getElementById("heard");
@@ -138,7 +146,16 @@ Object.entries(QURAN).forEach(([id,s])=>{
   const o=document.createElement("option"); o.value=id; o.textContent=`${id}. ${s.name}`; surahSel.append(o);
 });
 
-function current(){ return QURAN[surahSel.value].ayahs[+ayahSel.value]; }
+function current(){
+  if(modeSel.value === "surah"){
+    const ayahs = QURAN[surahSel.value].ayahs;
+    return {
+      ar: ayahs.map(a => a.ar).join(" "),
+      fr: ayahs.map((a,i) => `${i+1}. ${a.fr}`).join(" ")
+    };
+  }
+  return QURAN[surahSel.value].ayahs[+ayahSel.value];
+}
 function fillAyahs(){
   ayahSel.innerHTML="";
   QURAN[surahSel.value].ayahs.forEach((_,i)=>{
@@ -238,9 +255,19 @@ hideBtn.onclick=()=>{
   ayahAr.style.filter=hidden?"":"blur(10px)";
   hideBtn.textContent=hidden?"🙈 Masquer":"👁 Afficher";
 };
+function updateMode(){
+  if(modeSel.value === "surah"){
+    ayahBlock.style.display = "none";
+  } else {
+    ayahBlock.style.display = "";
+  }
+  render();
+}
+
 surahSel.onchange=()=>{fillAyahs();render();};
 ayahSel.onchange=render;
-fillAyahs();render();
+modeSel.onchange=updateMode;
+fillAyahs();updateMode();
 </script>
 </body>
 </html>
