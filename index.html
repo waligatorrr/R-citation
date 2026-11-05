@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f766e">
+<title>Récitation du Coran</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+:root{--bg:#f8fafc;--card:#fff;--ink:#0f172a;--muted:#64748b;--teal:#0f766e;--teal-soft:#ccfbf1;--err:#dc2626;--warn:#d97706;--ok:#16a34a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);padding-bottom:90px}
+header{position:sticky;top:0;background:linear-gradient(135deg,#0f766e,#115e59);color:#fff;padding:18px 16px 14px;border-radius:0 0 22px 22px;box-shadow:0 6px 18px rgba(15,118,110,.25)}
+h1{margin:0;font-size:20px;font-weight:700}
+header p{margin:4px 0 0;font-size:13px;opacity:.85}
+main{padding:16px;max-width:760px;margin:auto}
+.card{background:var(--card);border-radius:18px;padding:16px;box-shadow:0 2px 10px rgba(15,23,42,.06);margin-bottom:14px}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+select,input{width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:12px;font-size:16px;background:#fff}
+.ayah-ar{direction:rtl;text-align:right;font-family:"Geeza Pro","Amiri","Traditional Arabic",serif;font-size:30px;line-height:2.1;margin:8px 0 4px}
+.word{padding:2px 3px;border-radius:6px;transition:.15s}
+.word.current{background:var(--teal-soft);outline:2px solid var(--teal)}
+.word.missed{background:#fee2e2;color:var(--err)}
+.word.wrong{background:#fef3c7;color:var(--warn)}
+.word.done{color:var(--teal);font-weight:600}
+.translation{color:var(--muted);font-size:15px;line-height:1.55}
+.controls{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-top:1px solid #e2e8f0;padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.row{display:flex;gap:10px;max-width:760px;margin:auto}
+button{flex:1;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:700;cursor:pointer}
+.primary{background:var(--teal);color:#fff}
+.secondary{background:#e2e8f0;color:var(--ink)}
+.listening{background:#dc2626!important}
+.status{font-size:13px;color:var(--muted);text-align:center;margin-top:8px;min-height:18px}
+.badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:var(--teal-soft);color:var(--teal);margin-right:6px}
+.hidden{display:none}
+.stat{display:flex;justify-content:space-between;font-size:14px;padding:7px 0;border-bottom:1px solid #f1f5f9}
+.stat:last-child{border:0}
+.notice{font-size:13px;color:var(--muted);line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <h1>📖 Récitation du Coran</h1>
+  <p>Application personnelle — récite et vérifie ta mémorisation</p>
+</header>
+
+<main>
+  <div class="card">
+    <label for="surah">Sourate</label>
+    <select id="surah"></select>
+    <div style="height:10px"></div>
+    <label for="ayah">Verset</label>
+    <select id="ayah"></select>
+  </div>
+
+  <div class="card">
+    <div><span class="badge" id="ref">—</span><span class="badge" id="score">—</span></div>
+    <div class="ayah-ar" id="ayahAr"></div>
+    <div class="translation" id="ayahFr"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px">Résultat</h3>
+    <div id="feedback" class="notice">Appuie sur « Réciter », puis lis le verset affiché à voix haute.</div>
+    <div id="heard" class="ayah-ar hidden" style="font-size:24px"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px">Progression</h3>
+    <div id="stats"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px">Installation sur iPhone</h3>
+    <p class="notice">Ouvre cette page dans <b>Safari</b>, appuie sur <b>Partager</b>, puis <b>Sur l’écran d’accueil</b>. L’application s’ouvrira ensuite comme une app, sans App Store.</p>
+  </div>
+</main>
+
+<div class="controls">
+  <div class="row">
+    <button id="startBtn" class="primary">🎤 Réciter</button>
+    <button id="hideBtn" class="secondary">🙈 Masquer</button>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+const QURAN = {
+  "1": {name:"Al-Fatiha", ayahs:[
+    {ar:"بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", fr:"Au nom d’Allah, le Tout Miséricordieux, le Très Miséricordieux."},
+    {ar:"ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ", fr:"Louange à Allah, Seigneur de l’univers."},
+    {ar:"ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", fr:"Le Tout Miséricordieux, le Très Miséricordieux."},
+    {ar:"مَٰلِكِ يَوْمِ ٱلدِّينِ", fr:"Maître du Jour de la rétribution."},
+    {ar:"إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ", fr:"C’est Toi que nous adorons, et c’est Toi dont nous implorons le secours."},
+    {ar:"ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ", fr:"Guide-nous dans le droit chemin."},
+    {ar:"صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ", fr:"le chemin de ceux que Tu as comblés de faveurs, non pas de ceux qui ont encouru Ta colère, ni des égarés."}
+  ]},
+  "112": {name:"Al-Ikhlas", ayahs:[
+    {ar:"قُلْ هُوَ ٱللَّهُ أَحَدٌ", fr:"Dis : Il est Allah, l’Unique."},
+    {ar:"ٱللَّهُ ٱلصَّمَدُ", fr:"Allah, le Seigneur de perfection."},
+    {ar:"لَمْ يَلِدْ وَلَمْ يُولَدْ", fr:"Il n’a jamais engendré, n’a pas été engendré non plus."},
+    {ar:"وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ", fr:"Et nul n’est égal à Lui."}
+  ]},
+  "113": {name:"Al-Falaq", ayahs:[
+    {ar:"قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ", fr:"Dis : Je cherche protection auprès du Seigneur de l’aube naissante."},
+    {ar:"مِن شَرِّ مَا خَلَقَ", fr:"contre le mal de ce qu’Il a créé."},
+    {ar:"وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ", fr:"contre le mal de l’obscurité quand elle s’étend."},
+    {ar:"وَمِن شَرِّ ٱلنَّفَّٰثَٰتِ فِى ٱلْعُقَدِ", fr:"contre le mal de celles qui soufflent sur les nœuds."},
+    {ar:"وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ", fr:"et contre le mal de l’envieux quand il envie."}
+  ]},
+  "114": {name:"An-Nas", ayahs:[
+    {ar:"قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ", fr:"Dis : Je cherche protection auprès du Seigneur des hommes."},
+    {ar:"مَلِكِ ٱلنَّاسِ", fr:"le Souverain des hommes."},
+    {ar:"إِلَٰهِ ٱلنَّاسِ", fr:"le Dieu des hommes."},
+    {ar:"مِن شَرِّ ٱلْوَسْوَاسِ ٱلْخَنَّاسِ", fr:"contre le mal du mauvais insinuant, fuyant."},
+    {ar:"ٱلَّذِى يُوَسْوِسُ فِى صُدُورِ ٱلنَّاسِ", fr:"qui souffle le mal dans les poitrines des hommes."},
+    {ar:"مِنَ ٱلْجِنَّةِ وَٱلنَّاسِ", fr:"qu’il soit parmi les djinns ou parmi les hommes."}
+  ]}
+};
+
+const normalize = s => s
+  .replace(/[\u064B-\u0652\u0670\u06D6-\u06ED\u08F0-\u08F3]/g,"")
+  .replace(/[ٱأإآ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه")
+  .replace(/[^\u0600-\u06FF ]/g," ")
+  .replace(/\s+/g," ").trim();
+
+const surahSel=document.getElementById("surah"), ayahSel=document.getElementById("ayah");
+const ayahAr=document.getElementById("ayahAr"), ayahFr=document.getElementById("ayahFr");
+const ref=document.getElementById("ref"), scoreEl=document.getElementById("score");
+const feedback=document.getElementById("feedback"), heardEl=document.getElementById("heard");
+const startBtn=document.getElementById("startBtn"), hideBtn=document.getElementById("hideBtn");
+const statusEl=document.getElementById("status"), statsEl=document.getElementById("stats");
+
+Object.entries(QURAN).forEach(([id,s])=>{
+  const o=document.createElement("option"); o.value=id; o.textContent=`${id}. ${s.name}`; surahSel.append(o);
+});
+
+function current(){ return QURAN[surahSel.value].ayahs[+ayahSel.value]; }
+function fillAyahs(){
+  ayahSel.innerHTML="";
+  QURAN[surahSel.value].ayahs.forEach((_,i)=>{
+    const o=document.createElement("option"); o.value=i; o.textContent=`Verset ${i+1}`; ayahSel.append(o);
+  });
+}
+function render(){
+  const a=current();
+  ref.textContent=`Sourate ${surahSel.value} — ${QURAN[surahSel.value].name} · Verset ${+ayahSel.value+1}`;
+  ayahAr.innerHTML=a.ar.split(" ").map(w=>`<span class="word">${w}</span>`).join(" ");
+  ayahFr.textContent=a.fr;
+  scoreEl.textContent="—"; scoreEl.style.background="var(--teal-soft)"; scoreEl.style.color="var(--teal)";
+  feedback.textContent="Appuie sur « Réciter », puis lis le verset affiché à voix haute.";
+  heardEl.classList.add("hidden");
+  renderStats();
+}
+function renderStats(){
+  const data=JSON.parse(localStorage.getItem("quranProgress")||"{}");
+  const rows=[];
+  Object.entries(QURAN).forEach(([sid,s])=>{
+    const done=s.ayahs.filter((_,i)=>data[`${sid}:${i}`]?.correct).length;
+    rows.push(`<div class="stat"><span>${sid}. ${s.name}</span><b>${done}/${s.ayahs.length}</b></div>`);
+  });
+  statsEl.innerHTML=rows.join("");
+}
+function saveResult(correct){
+  const data=JSON.parse(localStorage.getItem("quranProgress")||"{}");
+  const key=`${surahSel.value}:${ayahSel.value}`;
+  data[key]={correct,at:Date.now()};
+  localStorage.setItem("quranProgress",JSON.stringify(data));
+  renderStats();
+}
+
+function compare(expected, heard){
+  const E=normalize(expected).split(" "), H=normalize(heard).split(" ");
+  const n=E.length,m=H.length;
+  const dp=Array.from({length:n+1},()=>Array(m+1).fill(0));
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++)
+    dp[i][j]=E[i-1]===H[j-1]?dp[i-1][j-1]+1:Math.max(dp[i-1][j],dp[i][j-1]);
+  const marks=Array(n).fill("missed"); let i=n,j=m;
+  while(i>0&&j>0){
+    if(E[i-1]===H[j-1]){marks[i-1]="ok";i--;j--;}
+    else if(dp[i-1][j]>=dp[i][j-1]) i--;
+    else j--;
+  }
+  return {marks,score:Math.round(dp[n][m]/n*100)};
+}
+
+let recognition=null, listening=false;
+function startListening(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){statusEl.textContent="La reconnaissance vocale n’est pas disponible dans ce navigateur. Utilise Safari sur iPhone.";return;}
+  recognition=new SR();
+  recognition.lang="ar-SA"; recognition.continuous=true; recognition.interimResults=true;
+  let finalText="";
+  recognition.onresult=e=>{
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      e.results[i].isFinal?finalText+=t+" ":interim+=t+" ";
+    }
+    const text=(finalText+interim).trim();
+    if(text){
+      heardEl.classList.remove("hidden");
+      heardEl.textContent=text;
+      const {marks,score}=compare(current().ar,text);
+      const spans=ayahAr.querySelectorAll(".word");
+      let currentIdx=marks.lastIndexOf("ok");
+      spans.forEach((sp,idx)=>{
+        sp.className="word "+(marks[idx]==="ok"?"done":marks[idx]);
+        if(idx===currentIdx+1&&marks[idx]!=="ok") sp.classList.add("current");
+      });
+      scoreEl.textContent=`${score}%`;
+      scoreEl.style.background=score>=85?"#dcfce7":"#fef3c7";
+      scoreEl.style.color=score>=85?"var(--ok)":"var(--warn)";
+      const missed=marks.filter(x=>x!=="ok").length;
+      feedback.innerHTML=missed===0
+        ? "✅ Masha’Allah, le verset semble complet."
+        : `⚠️ ${missed} mot(s) possiblement manquant(s) ou différent(s). La reconnaissance automatique peut se tromper : vérifie toujours avec le texte.`;
+      if(e.results[e.results.length-1].isFinal) saveResult(score>=85);
+    }
+  };
+  recognition.onerror=e=>statusEl.textContent="Erreur micro/reconnaissance : "+e.error;
+  recognition.onend=()=>{ if(listening){try{recognition.start()}catch(_){}} };
+  try{recognition.start();listening=true;startBtn.textContent="⏹ Arrêter";startBtn.classList.add("listening");statusEl.textContent="Écoute en cours… récite le verset.";}
+  catch(e){statusEl.textContent="Impossible de démarrer le micro.";}
+}
+function stopListening(){
+  listening=false; recognition?.stop();
+  startBtn.textContent="🎤 Réciter"; startBtn.classList.remove("listening");
+  statusEl.textContent="Écoute arrêtée.";
+}
+
+startBtn.onclick=()=>listening?stopListening():startListening();
+hideBtn.onclick=()=>{
+  const hidden=ayahAr.style.filter==="blur(10px)";
+  ayahAr.style.filter=hidden?"":"blur(10px)";
+  hideBtn.textContent=hidden?"🙈 Masquer":"👁 Afficher";
+};
+surahSel.onchange=()=>{fillAyahs();render();};
+ayahSel.onchange=render;
+fillAyahs();render();
+</script>
+</body>
+</html>

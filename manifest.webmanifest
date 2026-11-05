@@ -1,0 +1,12 @@
+{
+  "name": "Récitation du Coran",
+  "short_name": "Coran",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f766e",
+  "lang": "fr",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
+  ]
+}
